@@ -1,0 +1,10 @@
+ir_env/
+__pycache__/
+.streamlit/
+practtice/
+
+*.pyc
+*.pyo
+*.pyd
+
+IR_Assignment1_Implementation_Plan.md
