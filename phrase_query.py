@@ -418,61 +418,61 @@ def compare_indexes(
     return pd.DataFrame(rows)
 
 
-# # ─────────────────────────────────────────────
-# #  4. FALSE POSITIVE DEMO
-# # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+#  4. FALSE POSITIVE DEMO
+# ─────────────────────────────────────────────
 
 
-# def false_positive_demo() -> dict:
-#     """
-#     Demonstrate a case where biword index returns a false positive
-#     that the positional index correctly rejects.
+def false_positive_demo() -> dict:
+    """
+    Demonstrate a case where biword index returns a false positive
+    that the positional index correctly rejects.
 
-#     Returns a dict with:
-#         documents    — the demo document set
-#         query        — the phrase query used
-#         explanation  — what happened and why
-#         biword_idx   — the biword index built
-#         pos_idx      — the positional index built
-#         bw_result    — biword query result
-#         pos_result   — positional query result
-#     """
-#     # Carefully crafted so biword finds a match but
-#     # the words are NOT actually adjacent as a phrase
-#     documents = {
-#         "demo_doc1": (
-#             "information systems are used for retrieval of data. "
-#             "retrieval information is key in modern search."
-#         ),
-#         "demo_doc2": ("information retrieval is the core of any search engine."),
-#     }
+    Returns a dict with:
+        documents    — the demo document set
+        query        — the phrase query used
+        explanation  — what happened and why
+        biword_idx   — the biword index built
+        pos_idx      — the positional index built
+        bw_result    — biword query result
+        pos_result   — positional query result
+    """
+    # Carefully crafted so biword finds a match but
+    # the words are NOT actually adjacent as a phrase
+    documents = {
+        "demo_doc1": (
+            "information systems are used for retrieval of data. "
+            "retrieval information is key in modern search."
+        ),
+        "demo_doc2": ("information retrieval is the core of any search engine."),
+    }
 
-#     query = "information retrieval"
+    query = "information retrieval"
 
-#     biword_idx = build_biword_index(documents)
-#     pos_idx = build_positional_index(documents)
+    biword_idx = build_biword_index(documents)
+    pos_idx = build_positional_index(documents)
 
-#     bw_result = query_biword(query, biword_idx)
-#     pos_result = query_postional(query, pos_idx)
+    bw_result = query_biword(query, biword_idx)
+    pos_result = query_postional(query, pos_idx)
 
-#     explanation = (
-#         "demo_doc1 contains both 'information' and 'retrieval' "
-#         "but they are NOT adjacent — 'retrieval' appears before 'information' "
-#         "in the second sentence. The biword index finds the biword "
-#         "'information retrieval' only in demo_doc2. "
-#         "The positional index verifies consecutive positions and correctly "
-#         "returns only demo_doc2 as a true match."
-#     )
+    explanation = (
+        "demo_doc1 contains both 'information' and 'retrieval' "
+        "but they are NOT adjacent — 'retrieval' appears before 'information' "
+        "in the second sentence. The biword index finds the biword "
+        "'information retrieval' only in demo_doc2. "
+        "The positional index verifies consecutive positions and correctly "
+        "returns only demo_doc2 as a true match."
+    )
 
-#     return {
-#         "documents": documents,
-#         "query": query,
-#         "explanation": explanation,
-#         "biword_idx": biword_idx,
-#         "pos_idx": pos_idx,
-#         "bw_result": bw_result,
-#         "pos_result": pos_result,
-#     }
+    return {
+        "documents": documents,
+        "query": query,
+        "explanation": explanation,
+        "biword_idx": biword_idx,
+        "pos_idx": pos_idx,
+        "bw_result": bw_result,
+        "pos_result": pos_result,
+    }
 
 
 # # ─────────────────────────────────────────────

@@ -38,9 +38,9 @@ def _get_tokens(text: str, **kwargs) -> list[str]:
 def build_inverted_index(
     documents: dict[str, str],
     lowercase=True,
-    rm_stopwrods=True,
+    rm_stopwords=True,
     do_lemma=False,
-    do_stemm=False,
+    do_stem=False,
 ) -> dict[str, dict[str, int]]:
     """
     Build an inverted index with term frequency.
@@ -58,9 +58,9 @@ def build_inverted_index(
         tokens = _get_tokens(
             text,
             lowercase=lowercase,
-            rm_stopwrods=rm_stopwrods,
+            rm_stopwords=rm_stopwords,
             do_lemma=do_lemma,
-            do_stemm=do_stemm,
+            do_stem=do_stem,
         )
         for t in tokens:
             index[t][doc_id] += 1
@@ -356,3 +356,162 @@ def parse_boolena_query(query: str, index: dict[str, dict[str, int]], all_docs) 
         "results": results,
         "steps": steps,
     }
+
+
+# ─────────────────────────────────────────────
+#  4. INDEX STATISTICS
+# ─────────────────────────────────────────────
+
+
+def index_statistics(index: dict[str, dict[str, int]], documents: dict[str, str]) -> dict:
+    """
+    Compute summary statistics for the index.
+
+    Returns dict with:
+        vocab_size        — number of unique terms
+        total_postings    — total (term, doc) pairs
+        avg_df            — average document frequency
+        max_df_term       — term with highest doc frequency
+        min_df_term       — term with lowest doc frequency
+        singleton_terms   — terms appearing in only 1 document
+        top_10_terms      — 10 most frequent terms by DF
+    """
+    vocab_size = len(index)
+    total_postings = sum(len(docs) for docs in index.values())
+    avg_df = total_postings / vocab_size if vocab_size else 0
+
+    sorted_by_df = sorted(index.items(), key=lambda x: len(x[1]), reverse=True)
+    max_df_term = sorted_by_df[0][0] if sorted_by_df else ""
+    min_df_term = sorted_by_df[-1][0] if sorted_by_df else ""
+    singleton_terms = sum(1 for docs in index.values() if len(docs) == 1)
+    top_10 = [(t, len(d)) for t, d in sorted_by_df[:10]]
+
+    return {
+        "vocab_size": vocab_size,
+        "total_postings": total_postings,
+        "avg_df": round(avg_df, 2),
+        "max_df_term": max_df_term,
+        "min_df_term": min_df_term,
+        "singleton_terms": singleton_terms,
+        "top_10_terms": top_10,
+        "doc_count": len(documents),
+    }
+
+
+def index_to_dataframe(index: dict[str, dict[str, int]]) -> pd.DataFrame:
+    """Convert inverted index to a displayable DataFrame."""
+    rows = []
+    for term, doc_map in sorted(index.items()):
+        rows.append(
+            {
+                "Term": term,
+                "Document Frequency": len(doc_map),
+                "Term Frequency": sum(doc_map.values()),
+                "Posting List": ", ".join(
+                    f"{doc}({tf})" for doc, tf in sorted(doc_map.items())
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def stats_to_dataframe(stats: dict) -> pd.DataFrame:
+    """Convert index statistics to a displayable DataFrame."""
+    rows = [
+        {"Metric": "Vocabulary Size", "Value": stats["vocab_size"]},
+        {"Metric": "Total Postings", "Value": stats["total_postings"]},
+        {"Metric": "Document Count", "Value": stats["doc_count"]},
+        {"Metric": "Average Document Frequency", "Value": stats["avg_df"]},
+        {"Metric": "Max DF Term", "Value": stats["max_df_term"]},
+        {"Metric": "Min DF Term", "Value": stats["min_df_term"]},
+        {"Metric": "Singleton Terms", "Value": stats["singleton_terms"]},
+    ]
+    return pd.DataFrame(rows)
+
+
+# ─────────────────────────────────────────────
+#  5. SAVE / LOAD INDEX
+# ─────────────────────────────────────────────
+
+
+def save_index(index: dict, filepath: str) -> None:
+    """
+    Serialize the index to a JSON file.
+    Sets inside postings are converted to sorted lists.
+    """
+    serializable = {}
+    for term, doc_map in index.items():
+        if isinstance(doc_map, set):
+            serializable[term] = sorted(doc_map)
+        elif isinstance(doc_map, dict):
+            serializable[term] = {
+                doc_id: (sorted(v) if isinstance(v, (set, list)) else v)
+                for doc_id, v in doc_map.items()
+            }
+        else:
+            serializable[term] = doc_map
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(serializable, f, indent=2)
+    print(f"  Index saved → {filepath}")
+
+
+def load_index(filepath: str) -> dict:
+    """Load an index from a JSON file."""
+    with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+# # ─────────────────────────────────────────────
+# #  QUICK SELF-TEST  (run: python indexing.py)
+# # ─────────────────────────────────────────────
+
+# if __name__ == "__main__":
+
+#     sample = {
+#         "doc1": "information retrieval is the activity of obtaining relevant information resources.",
+#         "doc2": "a search engine is a well-known software system designed to carry out web searches.",
+#         "doc3": "natural language processing is a subfield of linguistics and artificial intelligence.",
+#         "doc4": "stemming reduces inflected words to their word stem or root form.",
+#         "doc5": "lemmatization groups inflected forms of a word so they can be analysed as a single item.",
+#     }
+
+#     print("=" * 60)
+#     print("INDEXING SELF-TEST")
+#     print("=" * 60)
+
+#     # Build index
+#     print("\nBuilding inverted index (stemmed)...")
+#     start = time.perf_counter()
+#     index = build_inverted_index(sample, rm_stopwords=True, do_stem=True)
+#     ms = round((time.perf_counter() - start) * 1000, 3)
+#     print(f"  Built in {ms} ms  |  {len(index)} terms")
+
+#     # Top 10
+#     print("\nTop 10 terms by DF:")
+#     sorted_idx = sorted(index.items(), key=lambda x: len(x[1]), reverse=True)
+#     for term, docs in sorted_idx[:10]:
+#         print(f"  {term:15s} df={len(docs)}  postings={dict(docs)}")
+
+#     # Statistics
+#     print("\nIndex statistics:")
+#     stats = index_statistics(index, sample)
+#     for k, v in stats.items():
+#         if k != "top_10_terms":
+#             print(f"  {k:25s}: {v}")
+
+#     # Boolean retrieval
+#     print("\nBoolean queries:")
+#     all_docs = set(sample.keys())
+#     for q in ["information AND retrieval", "stem OR lemma", "NOT search"]:
+#         result = parse_boolena_query(q, index, all_docs)
+#         print(f"  '{q}' → {sorted(result['results'])}")
+
+#     # TF-IDF
+#     print("\nTF-IDF (top 5 terms in doc1):")
+#     tfidf = compute_tfidf(index, len(sample))
+#     doc1_tfidf = {
+#         term: scores["doc1"] for term, scores in tfidf.items() if "doc1" in scores
+#     }
+#     for term, score in sorted(doc1_tfidf.items(), key=lambda x: x[1], reverse=True)[:5]:
+#         print(f"  {term:15s}: {score}")
