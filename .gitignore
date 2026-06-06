@@ -1,6 +1,5 @@
 ir_env/
 __pycache__/
-.streamlit/
 practtice/
 
 *.pyc
